@@ -3,6 +3,5 @@
 /.changeset
 /.github
 pnpm-lock.yaml
-.eslintrc.json
 .prettierrc
 package.json

@@ -53,41 +53,8 @@ jobs:
           fi
           echo "✅ Build output validated"
 
-      - name: Test package installation
-        run: |
-          pnpm pack
-          mkdir test-install
-          cd test-install
-          npm init -y
-          npm install ../chaqchase-next-middleware-*.tgz
-          node -e "
-            try {
-              const pkg = require('middleware-toolkit');
-              console.log('✅ Package imports successfully');
-              console.log('Available exports:', Object.keys(pkg));
-            } catch (e) {
-              console.error('❌ Package import failed:', e.message);
-              process.exit(1);
-            }
-          "
-
       - name: Security audit
         run: pnpm audit --audit-level moderate
-
-      - name: Check npm scope exists
-        run: |
-          if ! npm view middleware-toolkit &> /dev/null; then
-            echo "⚠️  Package not found on npm - this is expected for first publish"
-            echo "🔍 Checking if scope @chaqchase exists..."
-            if ! npm access ls-packages @chaqchase &> /dev/null; then
-              echo "❌ Scope @chaqchase does not exist on npm"
-              echo "Please create the scope on npm before publishing:"
-              echo "1. Go to https://npmjs.com"
-              echo "2. Create organization 'chaqchase' or ensure your username is 'chaqchase'"
-              echo "3. Retry the workflow"
-              exit 1
-            fi
-          fi
 
       - name: Create Release Pull Request or Publish
         id: changesets

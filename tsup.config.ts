@@ -11,7 +11,7 @@ export default defineConfig({
   treeshake: true,
   external: ['next'],
   banner: {
-    js: '// middleware-toolkit',
+    js: '// next-middleware-toolkit',
   },
   outExtension({ format }) {
     return {

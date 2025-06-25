@@ -29,37 +29,6 @@ export type MiddlewareRule<T = any> = (
 ) => Promise<MiddlewareResult> | MiddlewareResult;
 
 /**
- * Plugin interface for extending middleware functionality
- */
-export interface Plugin<T = any> {
-  /** Unique plugin name */
-  name: string;
-  /** Called before request processing begins */
-  beforeRequest?(context: MiddlewareContext<T>): Promise<void> | void;
-  /** Called before each rule execution */
-  beforeRule?(
-    context: MiddlewareContext<T>,
-    rule: MiddlewareRule<T>,
-  ): Promise<void> | void;
-  /** Called after each rule execution */
-  afterRule?(
-    context: MiddlewareContext<T>,
-    rule: MiddlewareRule<T>,
-    result: MiddlewareResult,
-  ): Promise<void> | void;
-  /** Called after request processing completes */
-  afterRequest?(
-    context: MiddlewareContext<T>,
-    result: MiddlewareResult,
-  ): Promise<void> | void;
-  /** Called when an error occurs */
-  onError?(
-    context: MiddlewareContext<T>,
-    error: Error,
-  ): Promise<MiddlewareResult | void> | MiddlewareResult | void;
-}
-
-/**
  * Route definition with priority and metadata
  */
 export interface RouteDefinition<T = any> {
@@ -91,5 +60,33 @@ export interface MiddlewareBuilderOptions<T = any> {
   defaultMetadata?: Record<string, any>;
 }
 
-// Re-export all modular types
-export * from './types';
+/**
+ * Plugin interface for extending middleware functionality
+ */
+export interface Plugin<T = any> {
+  /** Unique plugin name */
+  name: string;
+  /** Called before request processing begins */
+  beforeRequest?(context: MiddlewareContext<T>): Promise<void> | void;
+  /** Called before each rule execution */
+  beforeRule?(
+    context: MiddlewareContext<T>,
+    rule: MiddlewareRule<T>,
+  ): Promise<void> | void;
+  /** Called after each rule execution */
+  afterRule?(
+    context: MiddlewareContext<T>,
+    rule: MiddlewareRule<T>,
+    result: MiddlewareResult,
+  ): Promise<void> | void;
+  /** Called after request processing completes */
+  afterRequest?(
+    context: MiddlewareContext<T>,
+    result: MiddlewareResult,
+  ): Promise<void> | void;
+  /** Called when an error occurs */
+  onError?(
+    context: MiddlewareContext<T>,
+    error: Error,
+  ): Promise<MiddlewareResult | void> | MiddlewareResult | void;
+}

@@ -1,0 +1,50 @@
+name: Version Check
+
+on:
+  pull_request:
+    paths:
+      - 'package.json'
+      - 'CHANGELOG.md'
+      - '.changeset/**'
+
+jobs:
+  version-consistency:
+    name: Check Version Consistency
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Check version in package.json
+        id: package-version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "package-version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Package version: $VERSION"
+
+      - name: Check if changelog has entry for version
+        run: |
+          VERSION="${{ steps.package-version.outputs.package-version }}"
+          if ! grep -q "## \[$VERSION\]" CHANGELOG.md; then
+            echo "❌ CHANGELOG.md missing entry for version $VERSION"
+            echo "Please add a changelog entry for version $VERSION"
+            exit 1
+          fi
+          echo "✅ CHANGELOG.md has entry for version $VERSION"
+
+      - name: Validate changeset files
+        run: |
+          if [ -d ".changeset" ]; then
+            CHANGESET_FILES=$(find .changeset -name "*.md" ! -name "README.md" | wc -l)
+            if [ "$CHANGESET_FILES" -gt 0 ]; then
+              echo "✅ Found $CHANGESET_FILES changeset file(s)"
+            else
+              echo "⚠️ No changeset files found. Make sure to create a changeset for your changes."
+            fi
+          fi 

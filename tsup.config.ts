@@ -11,11 +11,13 @@ export default defineConfig({
   treeshake: true,
   external: ['next'],
   banner: {
-    js: '// @chaqchase/next-middleware',
+    js: '// middleware-toolkit',
   },
   outExtension({ format }) {
     return {
       js: format === 'esm' ? '.js' : '.cjs',
     };
   },
+  // Handle mixed exports properly for CJS compatibility
+  cjsInterop: true,
 });

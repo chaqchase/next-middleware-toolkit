@@ -15,24 +15,20 @@ A powerful, type-safe middleware system for Next.js with plugin architecture, ro
 
 ```bash
 # using pnpm
-pnpm add @chaqchase/next-middleware
+pnpm add middleware-toolkit
 # using npm
-npm install @chaqchase/next-middleware
+npm install middleware-toolkit
 # using bun
-bun add @chaqchase/next-middleware
+bun add middleware-toolkit
 # using yarn
-yarn add @chaqchase/next-middleware
+yarn add middleware-toolkit
 ```
 
 ## Quick Start
 
 ```typescript
 // middleware.ts
-import {
-  MiddlewareBuilder,
-  LoggingPlugin,
-  Rules,
-} from '@chaqchase/next-middleware';
+import { MiddlewareBuilder, LoggingPlugin, Rules } from 'middleware-toolkit';
 
 type User = {
   id: string;
@@ -66,7 +62,7 @@ export const config = {
 ## Built-in Rules
 
 ```typescript
-import { Rules, Responses } from '@chaqchase/next-middleware';
+import { Rules, Responses } from 'middleware-toolkit';
 
 // Authentication
 Rules.isLoggedIn();
@@ -127,7 +123,7 @@ Rules.custom(({ data, params }) => {
 ### Logging Plugin
 
 ```typescript
-import { LoggingPlugin } from '@chaqchase/next-middleware';
+import { LoggingPlugin } from 'middleware-toolkit';
 
 new LoggingPlugin({
   enabled: true,
@@ -140,7 +136,7 @@ new LoggingPlugin({
 ### Caching Plugin
 
 ```typescript
-import { CachingPlugin, MemoryCacheStorage } from '@chaqchase/next-middleware';
+import { CachingPlugin, MemoryCacheStorage } from 'middleware-toolkit';
 
 new CachingPlugin({
   enabled: true,
@@ -157,7 +153,7 @@ import {
   Plugin,
   MiddlewareContext,
   MiddlewareResult,
-} from '@chaqchase/next-middleware';
+} from 'middleware-toolkit';
 
 class AnalyticsPlugin implements Plugin {
   name = 'analytics';
@@ -181,7 +177,7 @@ class AnalyticsPlugin implements Plugin {
 ## Response Helpers
 
 ```typescript
-import { Responses } from '@chaqchase/next-middleware';
+import { Responses } from 'middleware-toolkit';
 
 Responses.next();
 Responses.redirect('/login');
@@ -194,7 +190,7 @@ Responses.notFound('Page not found');
 ## Internationalization
 
 ```typescript
-import { I18nPlugin } from '@chaqchase/next-middleware';
+import { I18nPlugin } from 'middleware-toolkit';
 
 const middleware = new MiddlewareBuilder({
   fetchUser,
@@ -245,7 +241,7 @@ Rules.custom(({ metadata }) => {
 ## Redis Caching Example
 
 ```typescript
-import { CacheStorage } from '@chaqchase/next-middleware';
+import { CacheStorage } from 'middleware-toolkit';
 import Redis from 'ioredis';
 
 class RedisCacheStorage implements CacheStorage {
@@ -284,7 +280,7 @@ new CachingPlugin({
 ## Legacy API Support
 
 ```typitten
-import Middleware from '@chaqchase/next-middleware';
+import Middleware from 'middleware-toolkit';
 
 const middleware = new Middleware({
   fetch: fetchUser,

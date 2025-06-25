@@ -1,5 +1,5 @@
 {
-  "name": "@chaqchase/next-middleware",
+  "name": "middleware-toolkit",
   "version": "1.0.0",
   "description": "A powerful, type-safe middleware system for Next.js with plugin architecture, route protection, caching, logging, and internationalization support",
   "license": "MIT",
@@ -36,9 +36,9 @@
   "typings": "dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
-      "require": "./dist/index.cjs",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/index.cjs"
     }
   },
   "files": [

@@ -1,67 +1,67 @@
-# @triyanox/next-middleware
+# @chaqchase/next-middleware
 
-## 0.1.5
+## [1.0.0] - 2024-01-20
 
-### Patch Changes
+### Initial Release
 
-- enhance the `redirect` fn
+A powerful, type-safe middleware system for Next.js with plugin architecture, route protection, caching, logging, and internationalization support.
 
-## 0.1.4
+### Features
 
-### Patch Changes
+**Core Middleware System**
 
-- fix: fix the `Path<T>` for `RuleFunction` #2
+- MiddlewareBuilder with fluent API for building middleware with plugin support
+- Type-safe route protection with flexible rule system
+- Priority-based routing with automatic priority calculation
+- Full TypeScript support with excellent IntelliSense
 
-## 0.1.3
+**Plugin Architecture**
 
-### Patch Changes
+- Extensible plugin system with lifecycle hooks (`beforeRequest`, `beforeRule`, `afterRule`, `afterRequest`, `onError`)
+- Built-in plugins for logging, caching, and internationalization
+- Custom plugin support for specific needs
 
-- fix the `Path<T>` for `RuleFunction`
+**Built-in Rules**
 
-## 0.1.2
+- Authentication rules: `isLoggedIn()`, `isNotLoggedIn()`
+- Authorization rules: `hasRole()`, `hasPermission()`
+- Utility rules: `redirectTo()`, `rateLimit()`, `custom()`
+- I18n rules: `redirectToPreferredLocale()`, `validateLocale()`, `enforceLocale()`
 
-### Patch Changes
+**Route Patterns**
 
-- Update the readme
+- Exact route matching with dynamic parameters
+- Prefix route matching for route groups
+- Custom route configuration with metadata support
 
-## 0.1.1
+**Built-in Plugins**
 
-### Patch Changes
+- **LoggingPlugin**: Request logging with configurable levels and detail
+- **CachingPlugin**: Request-level caching with customizable storage backends
+- **I18nPlugin**: Internationalization support with multiple strategies
 
-- Enhance the readme for better usage experience
+**Storage Options**
 
-## 0.1.0
+- MemoryCacheStorage for development
+- Redis integration example for production
+- Custom storage interface for implementing other backends
 
-### Minor Changes
+**Internationalization**
 
-- Release the first minor version
+- Support for prefix, domain, and subdomain-based routing
+- Framework integration with next-intl, next-i18next, and react-i18next
+- Automatic locale detection from headers, cookies, and URLs
+- Custom locale extraction and path rewriting
 
-### Patch Changes
+**Response Helpers**
 
-- 2413f32: Patch \_\_dirname
+- Standard responses: `next()`, `redirect()`, `json()`
+- HTTP status helpers: `unauthorized()`, `forbidden()`, `notFound()`
+- Full TypeScript support for all response types
 
-## 0.0.4
+**Compatibility**
 
-### Patch Changes
-
-- 93b78ed: Fix lock file
-
-## 0.0.3
-
-### Patch Changes
-
-- Remove uncessary dependencies
-
-## 0.0.2
-
-### Patch Changes
-
-- Switch build target
-- Updated dependencies
-  - @triyanox/next-middleware@0.0.2
-
-## 0.0.1
-
-### Patch Changes
-
-- First release
+- Full backward compatibility with existing middleware implementations
+- Legacy API support for easy migration
+- ESM/CJS dual package support
+- Next.js 14+ compatibility

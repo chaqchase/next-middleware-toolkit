@@ -1,161 +1,379 @@
-# Next.js Route Protection with `@triyanox/next-middleware`
+# Next.js Middleware Builder
 
-`@triyanox/next-middleware` is a user-friendly, type-safe package designed for route protection in your Next.js applications. It can be applied to pages, apps routes, and API routes.
+A powerful, type-safe middleware system for Next.js with plugin architecture, route protection, caching, logging, and internationalization support.
+
+## Features
+
+- **Plugin System**: Extensible architecture with lifecycle hooks
+- **Route Protection**: Type-safe route protection with flexible rules
+- **Built-in Plugins**: Logging, caching, and i18n support
+- **Priority Routing**: Smart route matching with automatic priority
+- **TypeScript First**: Full type safety with excellent IntelliSense
+- **Backward Compatible**: Works with existing implementations
 
 ## Installation
 
-You can install the package using your preferred package manager:
-
 ```bash
-# pnpm
-pnpm add @triyanox/next-middleware
-
-# bun
-bun add @triyanox/next-middleware
-
-# npm
-npm install @triyanox/next-middleware
-
-# Yarn
-yarn add @triyanox/next-middleware
+# using pnpm
+pnpm add @chaqchase/next-middleware
+# using npm
+npm install @chaqchase/next-middleware
+# using bun
+bun add @chaqchase/next-middleware
+# using yarn
+yarn add @chaqchase/next-middleware
 ```
 
-## How to Use
+## Quick Start
 
-Here are the steps to effectively use `@triyanox/next-middleware` for route protection:
+```typescript
+// middleware.ts
+import {
+  MiddlewareBuilder,
+  LoggingPlugin,
+  Rules,
+} from '@chaqchase/next-middleware';
 
-1. **Define the Data Type for Route Checks**
-
-Firstly, you need to specify the type of data that will be used for route checks. Here we use `User` as an example, but you can replace it with your own data type.
-
-```ts
-type Data = User; // Replace User with your own data type
-```
-
-2. **Import Dependencies**
-
-Next, import the `Middleware` class, the `RuleFunction` type, and the `Routes` type from the package. If you wish, you can also import the `routes` object from `@triyanox/next-routes` to generate the routes object. Nonetheless, you can provide your own routes object or type as long as it fulfills the `Routes` type.
-
-```ts
-import Middleware, { RuleFunction, Routes } from "@triyanox/next-middleware";
-import { routes } from "@/lib/link$";
-```
-
-To use `@triyanox/next-routes` for generating the routes, refer to the [documentation](https://github.com/triyanox/next-routes#readme) for more information.
-
-3. **Define Route Protection Rules**
-
-You will then define the rules for route protection using the `RuleFunction` type. For cleaner code, you can define these rules in separate files and import them into the main file. You can also define rules for specific routes using the `RuleFunction` type with the route path as the third type argument for added type safety.
-
-The `RuleFunction` type has three type arguments:
-
-- `Data`: The type of data for route checks.
-- `Routes`: The type of the routes object.
-- `Path` (optional): The path of the route for type safety.
-
-The `RuleFunction` type takes an object with the following properties:
-
-- `data`: The data for route checks.
-- `next`: A function to proceed to the next rule or route.
-- `redirect`: A function to redirect to a specific route.
-- `params`: An object containing the route parameters if the rule is for a specific dynamic route.
-- `path`: The current path of the route.
-
-These rules can be asynchronous functions. Here's an example of defining rules:
-
-```ts
-const isLoggedIn: RuleFunction<Data, typeof routes> = ({ data, next, redirect }) => {
-  if (data) {
-    return next();
-  } else {
-    return redirect("/login");
-  }
+type User = {
+  id: string;
+  email: string;
+  role: string;
+  permissions: string[];
 };
 
-const isAdmin: RuleFunction<Data, typeof routes> = ({ data, next, redirect }) => {
-  if (data.role === "ADMIN") {
-    return next();
-  } else {
-    return redirect("/login");
-  }
+const fetchUser = async (req: NextRequest): Promise<User | null> => {
+  const session = await getSession(req);
+  return session ? await getUserData(session.userId) : null;
 };
 
-const isOwnWorkspace: RuleFunction<Data, typeof routes, '/dashboard/workspaces/[workspaceId]'> = ({
-  data,
-  next,
-  redirect,
-  params,
-}) => {
-  if (data.workspaces.includes(params.workspaceId)) {
-    return next();
-  } else {
-    return redirect("/login");
-  }
+const middleware = new MiddlewareBuilder({
+  fetchUser,
+  plugins: [new LoggingPlugin({ level: 'info' })],
+})
+  .exact('/login', Rules.isNotLoggedIn())
+  .exact('/register', Rules.isNotLoggedIn())
+  .prefix('/dashboard', Rules.isLoggedIn())
+  .prefix('/admin', Rules.isLoggedIn(), Rules.hasRole('admin'))
+  .build();
+
+export default middleware;
+
+export const config = {
+  matcher: ['/((?!api/|_next/|_static|[\\w-]+\\.\\w+).*)'],
 };
 ```
 
-4. **Construct the Middleware and Perform Checks**
+## Built-in Rules
 
-Create a middleware using the `Middleware` class and perform the route checks. The `Middleware` class needs:
+```typescript
+import { Rules, Responses } from '@chaqchase/next-middleware';
 
-- `Routes`: The type of the routes object.
-- `Data`: The type of data for route checks.
+// Authentication
+Rules.isLoggedIn();
+Rules.isNotLoggedIn();
 
-It also takes an object with the following properties:
+// Authorization
+Rules.hasRole('admin');
+Rules.hasPermission('read:users');
 
-- `fetch`: An async function to fetch the data for route checks, which will be passed to the rules.
-- `rules`: An object where the keys are the paths of the routes and the values are arrays of rules for the routes. The paths can be specific routes or route patterns (We support wildcard paths for the current version we plan to add regex support in the future).
-- `authPaths`: An array of base paths where the rules should be applied.
-- `onError`: An async function to handle errors and redirects.
+// Utilities
+Rules.redirectTo('/dashboard');
+Rules.rateLimit({ requests: 10, window: 60000 });
 
-Here's an example of constructing the middleware:
-
-```ts
-import env from "@/env";
-import { NextResponse } from "next/server";
-import { isNotLoggedIn, isLoggedIn, isAdmin, isOwnWorkspace } from "@/lib/rules";
-import { routes } from "@/lib/link$";
-import type { Data } from "@/types";
-import Middleware from "@triyanox/next-middleware";
-
-const middleware = new Middleware<typeof routes, Data>({
-  fetch: async (req) => {
-    // Fetch and return the data for route checks
-    // call an API or a serverless function/db to fetch the data (note that the middleware file is not running on a node.js environment so you can't use things like prisma, mongoose, etc. directly in my case I make an API call to fetch the data)
-  },
-  rules: {
-    "/login": [isNotLoggedIn],
-    "/dashboard/*": [isLoggedIn, isAdmin],
-    "/dashboard/workspaces/[workspaceId]/*": [isLoggedIn, isAdmin, isOwnWorkspace],
-  },
-  authPaths: ["/login", "/dashboard"],
-  onError: async (req) => {
-    // Handle errors and redirects
-    const path = new URL(req.url).pathname;
-    if (path === "/login") {
-      return NextResponse.next();
-    }
-    return NextResponse.redirect(env.NEXT_PUBLIC_URL + "/login");
-  },
+// Custom rules
+Rules.custom(({ data, params }) => {
+  if (data?.id !== params.userId) {
+    return Responses.forbidden('Access denied');
+  }
+  return null;
 });
 ```
 
-5. **Export the Middleware**
+## Route Patterns
 
-Finally, export the middleware and the config object for use in your Next.js app. In this example, we bind the `handle` method to the middleware instance and export it as the default export. However, you can create your own handler function and export it by wrapping the middleware instance in your function.
+### Exact Routes
 
-```ts
-export default middleware.handle.bind(middleware);
-
-export const config = {
-  matcher: ["/((?!api/|_next/|_proxy/|_static|_vercel|[\\w-]+\\.\\w+).*)"],
-};
+```typescript
+.exact('/login', Rules.isNotLoggedIn())
+.exact('/users/[userId]', Rules.isLoggedIn())
 ```
+
+### Prefix Routes
+
+```typescript
+.prefix('/dashboard', Rules.isLoggedIn())
+.prefix('/api/admin', Rules.hasRole('admin'))
+```
+
+### Custom Route Configuration
+
+```typescript
+.route('/profile/[userId]', {
+  rules: [
+    Rules.isLoggedIn(),
+    Rules.custom(({ data, params }) => {
+      if (data?.id !== params.userId && !data?.permissions?.includes('admin')) {
+        return Responses.forbidden();
+      }
+      return null;
+    })
+  ],
+  metadata: { requiresOwnership: true }
+})
+```
+
+## Plugins
+
+### Logging Plugin
+
+```typescript
+import { LoggingPlugin } from '@chaqchase/next-middleware';
+
+new LoggingPlugin({
+  enabled: true,
+  level: 'info',
+  prefix: '[MIDDLEWARE]',
+  includeHeaders: false,
+});
+```
+
+### Caching Plugin
+
+```typescript
+import { CachingPlugin, MemoryCacheStorage } from '@chaqchase/next-middleware';
+
+new CachingPlugin({
+  enabled: true,
+  ttl: 300000, // 5 minutes
+  storage: new MemoryCacheStorage(),
+  keyGenerator: (req) => `user:${req.headers.get('authorization')}`,
+});
+```
+
+### Custom Plugin
+
+```typescript
+import {
+  Plugin,
+  MiddlewareContext,
+  MiddlewareResult,
+} from '@chaqchase/next-middleware';
+
+class AnalyticsPlugin implements Plugin {
+  name = 'analytics';
+
+  async beforeRequest(context: MiddlewareContext): Promise<void> {
+    await analytics.track('page_view', {
+      path: context.path,
+      userId: context.data?.id,
+    });
+  }
+
+  async onError(context: MiddlewareContext, error: Error): Promise<void> {
+    await analytics.track('middleware_error', {
+      error: error.message,
+      path: context.path,
+    });
+  }
+}
+```
+
+## Response Helpers
+
+```typescript
+import { Responses } from '@chaqchase/next-middleware';
+
+Responses.next();
+Responses.redirect('/login');
+Responses.json({ error: 'Invalid request' }, 400);
+Responses.unauthorized('Login required');
+Responses.forbidden('Access denied');
+Responses.notFound('Page not found');
+```
+
+## Internationalization
+
+```typescript
+import { I18nPlugin } from '@chaqchase/next-middleware';
+
+const middleware = new MiddlewareBuilder({
+  fetchUser,
+  plugins: [
+    new I18nPlugin({
+      defaultLocale: 'en',
+      supportedLocales: ['en', 'fr', 'de', 'es'],
+      strategy: 'prefix',
+      localeDetection: true,
+      localeCookie: 'NEXT_LOCALE',
+    }),
+  ],
+})
+  .exact('/', I18nRules.redirectToPreferredLocale())
+  .prefix('/[locale]/dashboard', Rules.isLoggedIn())
+  .build();
+```
+
+### Domain-based Localization
+
+```typescript
+new I18nPlugin({
+  strategy: 'domain',
+  domains: [
+    { domain: 'example.com', defaultLocale: 'en' },
+    { domain: 'example.fr', defaultLocale: 'fr' },
+    { domain: 'example.de', defaultLocale: 'de' },
+  ],
+});
+```
+
+### I18n Context Access
+
+```typescript
+Rules.custom(({ metadata }) => {
+  const i18n = metadata.i18n;
+
+  console.log({
+    locale: i18n.locale,
+    pathWithoutLocale: i18n.pathWithoutLocale,
+    isDefaultLocale: i18n.isDefaultLocale,
+  });
+
+  return null;
+});
+```
+
+## Redis Caching Example
+
+```typescript
+import { CacheStorage } from '@chaqchase/next-middleware';
+import Redis from 'ioredis';
+
+class RedisCacheStorage implements CacheStorage {
+  private redis = new Redis(process.env.REDIS_URL);
+
+  async get(key: string): Promise<any> {
+    const value = await this.redis.get(key);
+    return value ? JSON.parse(value) : null;
+  }
+
+  async set(key: string, value: any, ttl?: number): Promise<void> {
+    const serialized = JSON.stringify(value);
+    if (ttl) {
+      await this.redis.setex(key, Math.floor(ttl / 1000), serialized);
+    } else {
+      await this.redis.set(key, serialized);
+    }
+  }
+
+  async delete(key: string): Promise<void> {
+    await this.redis.del(key);
+  }
+
+  async clear(): Promise<void> {
+    await this.redis.flushall();
+  }
+}
+
+// Usage
+new CachingPlugin({
+  storage: new RedisCacheStorage(),
+  ttl: 300000,
+});
+```
+
+## Legacy API Support
+
+```typitten
+import Middleware from '@chaqchase/next-middleware';
+
+const middleware = new Middleware({
+  fetch: fetchUser,
+  rules: {
+    '/dashboard/*': [isLoggedIn],
+    '/admin/*': [isLoggedIn, isAdmin],
+  },
+  authPaths: ['/dashboard', '/admin'],
+});
+
+export default middleware.handle.bind(middleware);
+```
+
+## Configuration
+
+### Builder Options
+
+```typescript
+interface MiddlewareBuilderOptions<T> {
+  fetchUser: (req: NextRequest) => Promise<T | null>;
+  authPaths?: string[];
+  plugins?: Plugin<T>[];
+  defaultMetadata?: Record<string, any>;
+}
+```
+
+### Plugin Options
+
+```typescript
+// Logging Plugin
+interface LoggingPluginOptions {
+  enabled?: boolean;
+  level?: 'debug' | 'info' | 'warn' | 'error';
+  prefix?: string;
+  includeHeaders?: boolean;
+  includeBody?: boolean;
+}
+
+// Caching Plugin
+interface CachingPluginOptions {
+  enabled?: boolean;
+  ttl?: number;
+  keyGenerator?: (req: NextRequest) => string;
+  storage?: CacheStorage;
+}
+
+// I18n Plugin
+interface I18nPluginOptions {
+  enabled?: boolean;
+  defaultLocale?: string;
+  supportedLocales?: string[];
+  strategy?: 'prefix' | 'domain' | 'subdomain';
+  localeDetection?: boolean;
+  localeCookie?: string | false;
+  domains?: Array<{
+    domain: string;
+    defaultLocale: string;
+    locales?: string[];
+  }>;
+}
+```
+
+## Migration from v1
+
+```typescript
+// Old API
+const middleware = new Middleware({
+  fetch: fetchUser,
+  rules: { '/dashboard/*': [isLoggedIn] },
+  authPaths: ['/dashboard'],
+});
+
+// New API
+const middleware = new MiddlewareBuilder({
+  fetchUser,
+  authPaths: ['/dashboard'],
+})
+  .prefix('/dashboard', Rules.isLoggedIn())
+  .build();
+```
+
+## Best Practices
+
+1. **Use specific routes first** - The system handles priority automatically
+2. **Implement proper error handling** in your `fetchUser` function
+3. **Use appropriate cache TTL** based on data freshness requirements
+4. **Validate permissions** in your rules for security
+5. **Leverage plugins** for cross-cutting concerns
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Contributions
-
-We welcome contributions! Feel free to open an issue or submit a pull request if you have ideas or suggestions for improvement.
+MIT License - see [LICENSE](LICENSE) file for details.

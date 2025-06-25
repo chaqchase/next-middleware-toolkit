@@ -2,38 +2,100 @@ name: Release
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
 
-concurrency: ${{ github.workflow }}-${{ github.ref }}
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  release:
-    name: Release
+  validate-and-release:
+    name: Validate & Release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      pull-requests: write
+    
     steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v2
-
-      - name: Setup Node.js 20.x
-        uses: actions/setup-node@v2
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          node-version: 20.x
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+          registry-url: 'https://registry.npmjs.org'
 
       - name: Setup pnpm
-        run: npm install -g pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
 
-      - name: Install Dependencies
-        run: pnpm i
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
-      - name: Create Release PR or Publish Packages
+      - name: Validate code quality
+        run: pnpm validate
+
+      - name: Build package
+        run: pnpm build
+
+      - name: Validate build output
+        run: |
+          if [ ! -f "dist/index.js" ] || [ ! -f "dist/index.cjs" ] || [ ! -f "dist/index.d.ts" ]; then
+            echo "❌ Build output missing required files"
+            exit 1
+          fi
+          echo "✅ Build output validated"
+
+      - name: Test package installation
+        run: |
+          pnpm pack
+          mkdir test-install
+          cd test-install
+          npm init -y
+          npm install ../chaqchase-next-middleware-*.tgz
+          node -e "
+            try {
+              const pkg = require('@chaqchase/next-middleware');
+              console.log('✅ Package imports successfully');
+              console.log('Available exports:', Object.keys(pkg));
+            } catch (e) {
+              console.error('❌ Package import failed:', e.message);
+              process.exit(1);
+            }
+          "
+
+      - name: Security audit
+        run: pnpm audit --audit-level moderate
+
+      - name: Create Release Pull Request or Publish
         id: changesets
         uses: changesets/action@v1
         with:
           publish: pnpm release
           version: pnpm version
-          commit: 'chore: update package versions'
-          title: 'chore: update package versions'
+          commit: 'chore: release package'
+          title: 'chore: release package'
+          createGithubReleases: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Release Summary
+        if: steps.changesets.outputs.published == 'true'
+        run: |
+          echo "🎉 Package published successfully!"
+          echo "Published packages: ${{ steps.changesets.outputs.publishedPackages }}"
+          
+      - name: Notify on Failure
+        if: failure()
+        run: |
+          echo "❌ Release workflow failed"
+          echo "Please check the logs and fix any issues before retrying"

@@ -78,7 +78,10 @@ export const Rules: RuleFactories<any> = {
     const requests = new Map<string, number[]>();
 
     return ({ req }) => {
-      const ip = req.ip || req.headers.get('x-forwarded-for') || 'unknown';
+      const ip =
+        req.headers.get('x-forwarded-for') ||
+        req.headers.get('x-real-ip') ||
+        'unknown';
       const now = Date.now();
       const windowStart = now - options.window;
 

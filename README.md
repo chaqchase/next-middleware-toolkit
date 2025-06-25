@@ -1,4 +1,4 @@
-# Next.js Middleware Builder
+# next-middleware-toolkit
 
 A powerful, type-safe middleware system for Next.js with plugin architecture, route protection, caching, logging, and internationalization support.
 

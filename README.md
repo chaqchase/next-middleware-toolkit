@@ -347,32 +347,6 @@ interface I18nPluginOptions {
 }
 ```
 
-## Migration from v1
-
-```typescript
-// Old API
-const middleware = new Middleware({
-  fetch: fetchUser,
-  rules: { '/dashboard/*': [isLoggedIn] },
-  authPaths: ['/dashboard'],
-});
-
-// New API
-const middleware = new MiddlewareBuilder({
-  fetchUser,
-  authPaths: ['/dashboard'],
-})
-  .prefix('/dashboard', Rules.isLoggedIn())
-  .build();
-```
-
-## Best Practices
-
-1. **Use specific routes first** - The system handles priority automatically
-2. **Implement proper error handling** in your `fetchUser` function
-3. **Use appropriate cache TTL** based on data freshness requirements
-4. **Validate permissions** in your rules for security
-5. **Leverage plugins** for cross-cutting concerns
 
 ## License
 

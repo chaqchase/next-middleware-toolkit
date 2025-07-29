@@ -281,23 +281,6 @@ new CachingPlugin({
 });
 ```
 
-## Legacy API Support
-
-```typitten
-import Middleware from 'next-middleware-toolkit';
-
-const middleware = new Middleware({
-  fetch: fetchUser,
-  rules: {
-    '/dashboard/*': [isLoggedIn],
-    '/admin/*': [isLoggedIn, isAdmin],
-  },
-  authPaths: ['/dashboard', '/admin'],
-});
-
-export default middleware.handle.bind(middleware);
-```
-
 ## Configuration
 
 ### Builder Options

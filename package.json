@@ -1,7 +1,7 @@
 {
   "name": "next-middleware-toolkit",
-  "version": "1.0.0",
-  "description": "A powerful, type-safe middleware system for Next.js with plugin architecture, route protection, caching, logging, and internationalization support",
+  "version": "2.0.0",
+  "description": "A simple, type-safe middleware system for Next.js with route protection and built-in authentication rules",
   "license": "MIT",
   "publishConfig": {
     "access": "public"
@@ -22,10 +22,14 @@
   "scripts": {
     "build": "tsup src/index.ts --dts --clean",
     "dev": "tsup src/index.ts --dts --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
     "type-check": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "validate": "pnpm type-check && pnpm format:check",
+    "validate": "pnpm type-check && pnpm format:check && pnpm test",
     "prepublishOnly": "pnpm validate && pnpm build",
     "changeset": "changeset",
     "release": "pnpm build && changeset publish",
@@ -53,10 +57,12 @@
   },
   "devDependencies": {
     "@changesets/cli": "^2.27.1",
+    "@vitest/ui": "^3.2.4",
     "next": "^15.3.4",
     "prettier": "^3.2.5",
     "tsup": "^8.0.2",
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.5",
+    "vitest": "^3.2.4"
   },
   "peerDependencies": {
     "next": ">=14.0.0",
@@ -73,13 +79,9 @@
     "route-protection",
     "protected-routes",
     "next-middleware",
-    "acl",
-    "plugin",
-    "caching",
-    "logging",
-    "i18n",
-    "internationalization",
     "typescript",
-    "type-safe"
+    "type-safe",
+    "rbac",
+    "permissions"
   ]
 }

@@ -1,38 +1,34 @@
 # next-middleware-toolkit
 
-A powerful, type-safe middleware system for Next.js with plugin architecture, route protection, caching, logging, and internationalization support.
+A simple, type-safe middleware system for Next.js with route protection and built-in authentication rules.
 
 ## Features
 
-- **Plugin System**: Extensible architecture with lifecycle hooks
-- **Route Protection**: Type-safe route protection with flexible rules
-- **Built-in Plugins**: Logging, caching, and i18n support
-- **Priority Routing**: Smart route matching with automatic priority
-- **TypeScript First**: Full type safety with excellent IntelliSense
-- **Backward Compatible**: Works with existing implementations
+- **Type-Safe**: Full TypeScript support with excellent IntelliSense
+- **Simple API**: Intuitive fluent interface for building middleware
+- **Route Protection**: Easy-to-use route guards with exact and prefix matching
+- **Built-in Rules**: Common authentication and authorization patterns included
+- **Flexible**: Create custom rules for any use case
+- **Lightweight**: No dependencies beyond Next.js
 
 ## Installation
 
 ```bash
-# using pnpm
-pnpm add next-middleware-toolkit
-# using npm
 npm install next-middleware-toolkit
-# using bun
-bun add next-middleware-toolkit
-# using yarn
+# or
+pnpm add next-middleware-toolkit
+# or
 yarn add next-middleware-toolkit
+# or
+bun add next-middleware-toolkit
 ```
 
 ## Quick Start
 
 ```typescript
 // middleware.ts
-import {
-  MiddlewareBuilder,
-  LoggingPlugin,
-  Rules,
-} from 'next-middleware-toolkit';
+import { MiddlewareBuilder, Rules } from 'next-middleware-toolkit';
+import { NextRequest } from 'next/server';
 
 type User = {
   id: string;
@@ -42,13 +38,14 @@ type User = {
 };
 
 const fetchUser = async (req: NextRequest): Promise<User | null> => {
+  // Your user fetching logic here
   const session = await getSession(req);
   return session ? await getUserData(session.userId) : null;
 };
 
 const middleware = new MiddlewareBuilder({
   fetchUser,
-  plugins: [new LoggingPlugin({ level: 'info' })],
+  baseUrl: process.env.NEXT_PUBLIC_BASE_URL, // Optional: for redirects
 })
   .exact('/login', Rules.isNotLoggedIn())
   .exact('/register', Rules.isNotLoggedIn())
@@ -63,273 +60,316 @@ export const config = {
 };
 ```
 
-## Built-in Rules
+## API Reference
+
+### MiddlewareBuilder
+
+The main class for building middleware.
+
+#### Constructor Options
 
 ```typescript
-import { Rules, Responses } from 'next-middleware-toolkit';
+interface MiddlewareBuilderOptions<T> {
+  // Function to fetch user data for each request
+  fetchUser: (req: NextRequest) => Promise<T | null>;
 
-// Authentication
-Rules.isLoggedIn();
-Rules.isNotLoggedIn();
-
-// Authorization
-Rules.hasRole('admin');
-Rules.hasPermission('read:users');
-
-// Utilities
-Rules.redirectTo('/dashboard');
-Rules.rateLimit({ requests: 10, window: 60000 });
-
-// Custom rules
-Rules.custom(({ data, params }) => {
-  if (data?.id !== params.userId) {
-    return Responses.forbidden('Access denied');
-  }
-  return null;
-});
+  // Optional: Base URL for redirects (defaults to request origin)
+  baseUrl?: string;
+}
 ```
 
-## Route Patterns
+#### Methods
 
-### Exact Routes
+**`.exact(path, ...rules)`**
+
+Add an exact route match. The path must match exactly for the rules to execute.
 
 ```typescript
-.exact('/login', Rules.isNotLoggedIn())
+.exact('/profile', Rules.isLoggedIn())
 .exact('/users/[userId]', Rules.isLoggedIn())
 ```
 
-### Prefix Routes
+**`.prefix(path, ...rules)`**
+
+Add a prefix route match. Any path starting with the prefix will match.
 
 ```typescript
 .prefix('/dashboard', Rules.isLoggedIn())
 .prefix('/api/admin', Rules.hasRole('admin'))
 ```
 
-### Custom Route Configuration
+**`.build()`**
+
+Build and return the final middleware handler.
 
 ```typescript
-.route('/profile/[userId]', {
-  rules: [
-    Rules.isLoggedIn(),
-    Rules.custom(({ data, params }) => {
-      if (data?.id !== params.userId && !data?.permissions?.includes('admin')) {
-        return Responses.forbidden();
-      }
-      return null;
-    })
-  ],
-  metadata: { requiresOwnership: true }
-})
+const middleware = builder.build();
+export default middleware;
 ```
 
-## Plugins
+### Built-in Rules
 
-### Logging Plugin
+All built-in rules are available via the `Rules` object.
+
+#### `Rules.isLoggedIn()`
+
+Requires the user to be logged in. Redirects to `/sign-in` if not authenticated.
 
 ```typescript
-import { LoggingPlugin } from 'next-middleware-toolkit';
-
-new LoggingPlugin({
-  enabled: true,
-  level: 'info',
-  prefix: '[MIDDLEWARE]',
-  includeHeaders: false,
-});
+.exact('/profile', Rules.isLoggedIn())
 ```
 
-### Caching Plugin
+#### `Rules.isNotLoggedIn()`
+
+Requires the user to NOT be logged in. Redirects to `/` if already authenticated.
 
 ```typescript
-import { CachingPlugin, MemoryCacheStorage } from 'next-middleware-toolkit';
-
-new CachingPlugin({
-  enabled: true,
-  ttl: 300000, // 5 minutes
-  storage: new MemoryCacheStorage(),
-  keyGenerator: (req) => `user:${req.headers.get('authorization')}`,
-});
+.exact('/login', Rules.isNotLoggedIn())
 ```
 
-### Custom Plugin
+#### `Rules.hasRole(role)`
+
+Requires the user to have a specific role. Returns 403 if the user doesn't have the required role.
 
 ```typescript
-import {
-  Plugin,
-  MiddlewareContext,
-  MiddlewareResult,
-} from 'next-middleware-toolkit';
+.prefix('/admin', Rules.hasRole('admin'))
+```
 
-class AnalyticsPlugin implements Plugin {
-  name = 'analytics';
+Works with both `user.role` (string) and `user.roles` (array).
 
-  async beforeRequest(context: MiddlewareContext): Promise<void> {
-    await analytics.track('page_view', {
-      path: context.path,
-      userId: context.data?.id,
-    });
+#### `Rules.hasPermission(permission)`
+
+Requires the user to have a specific permission. Returns 403 if the user doesn't have the required permission.
+
+```typescript
+.prefix('/api/users', Rules.hasPermission('read:users'))
+```
+
+Requires `user.permissions` to be an array.
+
+#### `Rules.redirectTo(destination)`
+
+Always redirects to the specified destination.
+
+```typescript
+.exact('/old-path', Rules.redirectTo('/new-path'))
+```
+
+#### `Rules.custom(fn)`
+
+Create a custom rule with your own logic.
+
+```typescript
+.exact('/profile/[userId]',
+  Rules.isLoggedIn(),
+  Rules.custom(({ data, params }) => {
+    // Only allow users to access their own profile
+    if (data?.id !== params.userId) {
+      return Responses.forbidden('Cannot access another user\'s profile');
+    }
+    return null; // Allow the request to continue
+  })
+)
+```
+
+### Response Helpers
+
+Helper functions for creating responses.
+
+#### `Responses.next()`
+
+Continue to the next middleware or handler.
+
+```typescript
+return Responses.next();
+```
+
+#### `Responses.redirect(url)`
+
+Redirect to a URL. Uses the base URL configured in MiddlewareBuilder.
+
+```typescript
+return Responses.redirect('/login');
+```
+
+#### `Responses.json(data, status?)`
+
+Return a JSON response.
+
+```typescript
+return Responses.json({ error: 'Invalid request' }, 400);
+```
+
+#### `Responses.unauthorized(message?)`
+
+Return a 401 Unauthorized response.
+
+```typescript
+return Responses.unauthorized('Login required');
+```
+
+#### `Responses.forbidden(message?)`
+
+Return a 403 Forbidden response.
+
+```typescript
+return Responses.forbidden('Access denied');
+```
+
+#### `Responses.notFound(message?)`
+
+Return a 404 Not Found response.
+
+```typescript
+return Responses.notFound('Page not found');
+```
+
+## Advanced Usage
+
+### Custom Rules
+
+Create custom rules for complex authorization logic:
+
+```typescript
+const requireOwnership = Rules.custom(({ data, params }) => {
+  const userId = params.userId;
+  const isOwner = data?.id === userId;
+  const isAdmin = data?.role === 'admin';
+
+  if (!isOwner && !isAdmin) {
+    return Responses.forbidden('You can only modify your own resources');
   }
 
-  async onError(context: MiddlewareContext, error: Error): Promise<void> {
-    await analytics.track('middleware_error', {
-      error: error.message,
-      path: context.path,
-    });
-  }
-}
-```
+  return null; // Allow the request
+});
 
-## Response Helpers
-
-```typescript
-import { Responses } from 'next-middleware-toolkit';
-
-Responses.next();
-Responses.redirect('/login');
-Responses.json({ error: 'Invalid request' }, 400);
-Responses.unauthorized('Login required');
-Responses.forbidden('Access denied');
-Responses.notFound('Page not found');
-```
-
-## Internationalization
-
-```typescript
-import { I18nPlugin } from 'next-middleware-toolkit';
-
-const middleware = new MiddlewareBuilder({
-  fetchUser,
-  plugins: [
-    new I18nPlugin({
-      defaultLocale: 'en',
-      supportedLocales: ['en', 'fr', 'de', 'es'],
-      strategy: 'prefix',
-      localeDetection: true,
-      localeCookie: 'NEXT_LOCALE',
-    }),
-  ],
-})
-  .exact('/', I18nRules.redirectToPreferredLocale())
-  .prefix('/[locale]/dashboard', Rules.isLoggedIn())
+const middleware = new MiddlewareBuilder({ fetchUser })
+  .exact('/users/[userId]/edit', Rules.isLoggedIn(), requireOwnership)
   .build();
 ```
 
-### Domain-based Localization
+### Route Parameters
+
+Access dynamic route parameters in your rules:
 
 ```typescript
-new I18nPlugin({
-  strategy: 'domain',
-  domains: [
-    { domain: 'example.com', defaultLocale: 'en' },
-    { domain: 'example.fr', defaultLocale: 'fr' },
-    { domain: 'example.de', defaultLocale: 'de' },
-  ],
-});
+.exact('/posts/[postId]/comments/[commentId]',
+  Rules.custom(({ params }) => {
+    console.log(params.postId);    // Access post ID
+    console.log(params.commentId); // Access comment ID
+    return null;
+  })
+)
 ```
 
-### I18n Context Access
+### Multiple Rules
+
+Chain multiple rules together. They execute in order and stop at the first one that returns a response:
 
 ```typescript
-Rules.custom(({ metadata }) => {
-  const i18n = metadata.i18n;
-
-  console.log({
-    locale: i18n.locale,
-    pathWithoutLocale: i18n.pathWithoutLocale,
-    isDefaultLocale: i18n.isDefaultLocale,
-  });
-
-  return null;
-});
-```
-
-## Redis Caching Example
-
-```typescript
-import { CacheStorage } from 'next-middleware-toolkit';
-import Redis from 'ioredis';
-
-class RedisCacheStorage implements CacheStorage {
-  private redis = new Redis(process.env.REDIS_URL);
-
-  async get(key: string): Promise<any> {
-    const value = await this.redis.get(key);
-    return value ? JSON.parse(value) : null;
-  }
-
-  async set(key: string, value: any, ttl?: number): Promise<void> {
-    const serialized = JSON.stringify(value);
-    if (ttl) {
-      await this.redis.setex(key, Math.floor(ttl / 1000), serialized);
-    } else {
-      await this.redis.set(key, serialized);
+.prefix('/admin',
+  Rules.isLoggedIn(),
+  Rules.hasRole('admin'),
+  Rules.custom(({ data }) => {
+    // Additional custom checks
+    if (!data?.emailVerified) {
+      return Responses.forbidden('Email must be verified');
     }
-  }
-
-  async delete(key: string): Promise<void> {
-    await this.redis.del(key);
-  }
-
-  async clear(): Promise<void> {
-    await this.redis.flushall();
-  }
-}
-
-// Usage
-new CachingPlugin({
-  storage: new RedisCacheStorage(),
-  ttl: 300000,
-});
+    return null;
+  })
+)
 ```
 
-## Configuration
+### Context Object
 
-### Builder Options
+Every rule receives a context object:
 
 ```typescript
-interface MiddlewareBuilderOptions<T> {
-  fetchUser: (req: NextRequest) => Promise<T | null>;
-  authPaths?: string[];
-  plugins?: Plugin<T>[];
-  defaultMetadata?: Record<string, any>;
+interface MiddlewareContext<T> {
+  data: T | null; // User data from fetchUser
+  req: NextRequest; // Next.js request object
+  path: string; // Current path
+  params: Record<string, string>; // Route parameters
 }
 ```
 
-### Plugin Options
+## TypeScript
+
+The library is fully typed. Define your user type for complete type safety:
 
 ```typescript
-// Logging Plugin
-interface LoggingPluginOptions {
-  enabled?: boolean;
-  level?: 'debug' | 'info' | 'warn' | 'error';
-  prefix?: string;
-  includeHeaders?: boolean;
-  includeBody?: boolean;
-}
+type User = {
+  id: string;
+  email: string;
+  role: 'admin' | 'user' | 'moderator';
+  permissions: string[];
+};
 
-// Caching Plugin
-interface CachingPluginOptions {
-  enabled?: boolean;
-  ttl?: number;
-  keyGenerator?: (req: NextRequest) => string;
-  storage?: CacheStorage;
-}
-
-// I18n Plugin
-interface I18nPluginOptions {
-  enabled?: boolean;
-  defaultLocale?: string;
-  supportedLocales?: string[];
-  strategy?: 'prefix' | 'domain' | 'subdomain';
-  localeDetection?: boolean;
-  localeCookie?: string | false;
-  domains?: Array<{
-    domain: string;
-    defaultLocale: string;
-    locales?: string[];
-  }>;
-}
+const middleware = new MiddlewareBuilder<User>({
+  fetchUser: async (req) => {
+    // Return type is automatically User | null
+    return await getUser(req);
+  },
+})
+  .exact(
+    '/profile',
+    Rules.custom(({ data }) => {
+      // data is typed as User | null
+      console.log(data?.email);
+      return null;
+    }),
+  )
+  .build();
 ```
 
+## Examples
+
+### Basic Authentication
+
+```typescript
+const middleware = new MiddlewareBuilder({ fetchUser })
+  .exact('/login', Rules.isNotLoggedIn())
+  .exact('/register', Rules.isNotLoggedIn())
+  .prefix('/app', Rules.isLoggedIn())
+  .build();
+```
+
+### Role-Based Access Control
+
+```typescript
+const middleware = new MiddlewareBuilder({ fetchUser })
+  .prefix('/admin', Rules.isLoggedIn(), Rules.hasRole('admin'))
+  .prefix('/moderator', Rules.isLoggedIn(), Rules.hasRole('moderator'))
+  .prefix('/dashboard', Rules.isLoggedIn())
+  .build();
+```
+
+### Permission-Based Access
+
+```typescript
+const middleware = new MiddlewareBuilder({ fetchUser })
+  .prefix('/api/users', Rules.hasPermission('read:users'))
+  .prefix('/api/posts', Rules.hasPermission('read:posts'))
+  .exact('/api/admin/settings', Rules.hasPermission('write:settings'))
+  .build();
+```
+
+### Custom Authorization
+
+```typescript
+const middleware = new MiddlewareBuilder({ fetchUser })
+  .exact(
+    '/profile/[userId]',
+    Rules.isLoggedIn(),
+    Rules.custom(({ data, params }) => {
+      if (data?.id !== params.userId && data?.role !== 'admin') {
+        return Responses.forbidden();
+      }
+      return null;
+    }),
+  )
+  .build();
+```
 
 ## License
 

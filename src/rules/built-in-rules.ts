@@ -71,39 +71,6 @@ export const Rules: RuleFactories<any> = {
   },
 
   /**
-   * Creates a rate limiting rule that tracks requests per IP address.
-   * Returns 429 status when rate limit is exceeded.
-   */
-  rateLimit: (options: { requests: number; window: number }) => {
-    const requests = new Map<string, number[]>();
-
-    return ({ req }) => {
-      const ip =
-        req.headers.get('x-forwarded-for') ||
-        req.headers.get('x-real-ip') ||
-        'unknown';
-      const now = Date.now();
-      const windowStart = now - options.window;
-
-      if (!requests.has(ip)) {
-        requests.set(ip, []);
-      }
-
-      const userRequests = requests.get(ip)!;
-      const validRequests = userRequests.filter((time) => time > windowStart);
-
-      if (validRequests.length >= options.requests) {
-        return Responses.json({ error: 'Rate limit exceeded' }, 429);
-      }
-
-      validRequests.push(now);
-      requests.set(ip, validRequests);
-
-      return null;
-    };
-  },
-
-  /**
    * Wraps a custom rule function.
    */
   custom: (fn: MiddlewareRule<any>) => fn,

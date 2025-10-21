@@ -2,10 +2,24 @@ import { NextResponse } from 'next/server';
 import { MiddlewareResponses } from './types';
 
 /**
+ * Internal base URL for redirects
+ */
+let currentBaseUrl = 'http://localhost:3000';
+
+/**
  * Collection of helper functions for creating common middleware responses.
  * Provides a consistent API for handling redirects, errors, and other responses.
  */
-export const Responses: MiddlewareResponses = {
+export const Responses: MiddlewareResponses & {
+  setBaseUrl: (url: string) => void;
+} = {
+  /**
+   * Set the base URL for redirects (internal use by MiddlewareBuilder)
+   */
+  setBaseUrl: (url: string) => {
+    currentBaseUrl = url;
+  },
+
   /**
    * Creates a response that continues to the next middleware or handler.
    */
@@ -14,13 +28,8 @@ export const Responses: MiddlewareResponses = {
   /**
    * Creates a redirect response to the specified URL.
    */
-  redirect: (url: string, baseUrl?: string) => {
-    const baseURL =
-      baseUrl ||
-      (typeof window !== 'undefined'
-        ? window.location.origin
-        : 'http://localhost:3000');
-    return NextResponse.redirect(new URL(url, baseURL));
+  redirect: (url: string) => {
+    return NextResponse.redirect(new URL(url, currentBaseUrl));
   },
 
   /**

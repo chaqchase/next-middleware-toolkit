@@ -14,8 +14,6 @@ export interface RuleFactories<T = any> {
   hasPermission(permission: string): MiddlewareRule<T>;
   /** Create a rule that redirects to a destination */
   redirectTo(destination: string): MiddlewareRule<T>;
-  /** Create a rate limiting rule */
-  rateLimit(options: { requests: number; window: number }): MiddlewareRule<T>;
   /** Create a custom rule */
   custom(fn: MiddlewareRule<T>): MiddlewareRule<T>;
 }

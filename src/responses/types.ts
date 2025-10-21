@@ -7,7 +7,7 @@ export interface MiddlewareResponses {
   /** Create a NextResponse that continues to the next middleware */
   next(): NextResponse;
   /** Create a redirect response */
-  redirect(url: string, baseUrl?: string): NextResponse;
+  redirect(url: string): NextResponse;
   /** Create a JSON response */
   json(data: any, status?: number): NextResponse;
   /** Create an unauthorized (401) response */
